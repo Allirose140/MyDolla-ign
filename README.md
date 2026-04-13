@@ -17,10 +17,16 @@ Many people struggle to budget and save due to a lack of accessible, trustworthy
 
 ## MVP Features (Milestone 2)
 
-1. **Budget form:** Monthly income, categorized expenses, goal.
-2. **Analyze:** Single API path `POST /api/analyze` (JSON).
-3. **Results in the UI:** Grounded explanation (uses your numbers), **one** quiz question, **one** rule-grounded tip (see `docs/financial_rules.md`), optional category breakdown, disclaimer, and **output source** (Vertex AI vs deterministic fallback).
-4. **Safe fallback:** If Vertex AI is unavailable or misconfigured, the backend returns a full structured response from deterministic logic so the demo still works.
+1. **Budget form:** Monthly income, categorized expenses, and a budgeting goal.
+2. **Analyze:** The frontend submits the budget payload to `POST /api/analyze`.
+3. **Quiz-first learning flow:** After Analyze returns, the UI shows a quiz question tied to the submitted budget before revealing the full write-up.
+4. **Grading step:** The learner submits a response to `POST /api/grade-quiz`, which returns a grader verdict (`correct`, `partially correct`, or `incorrect`) plus feedback and an answer key.
+5. **Grounded results:** After grading, the UI reveals a grounded explanation that references the user's numbers and a rule-grounded financial tip.
+6. **Safe fallback:** If a live AI path is unavailable or misconfigured, the backend returns deterministic fallback content so the browser demo still works safely.
+### Saving Plan Feature
+- Displays a multi-month saving plan based on AI analysis
+- Includes fallback plan when AI response is unavailable
+- Rendered as a timeline-style UI for clarity and readability
 
 ## Tech Stack
 
@@ -45,23 +51,43 @@ MyDolla-Sign/
 ├── frontend/
 │   ├── src/
 │   │   ├── components/           # React components
+│   │   ├── utils/                # Shared helpers (e.g. budget payload normalization)
 │   │   └── App.jsx               # Main app entry
 │   └── package.json
 ├── backend/
-│   ├── src/
-│   │   ├── ai_tutor.py           # AI Tutor Core
-│   │   ├── rule_engine.py        # Financial Rules Engine
-│   │   ├── prompt_templates.py   # Prompt Builder
-│   │   └── rules/
-│   │       └── financial_rules.json
-│   ├── demo.py                   # Interactive Demo Script
-│   ├── test_tutor.py             # Test Script
+│   ├── app/                      # Flask API + `ai_service` (production path)
+│   ├── demo.py                   # Terminal demo (`analyze_budget`, same as API)
+│   ├── test_tutor.py             # Smoke test for `analyze_budget`
 │   ├── requirements.txt
-│   └── main.py                   # Server entry point
+│   └── main.py                   # API entry (React UI in `frontend/`)
 └── CONTRIBUTING.md               # Team contribution guide
 ```
 
 ## How to Run
+
+### Quick start (full browser app)
+
+1. **Backend:** from `backend/`, create a venv, `pip install -r requirements.txt`, copy `.env.example` → `.env` (leave `GEMINI_API_KEY` empty if you want; the API still returns a full response using deterministic fallback).
+2. Run **`python main.py`** (default **http://127.0.0.1:5001**).
+3. **Frontend:** from `frontend/`, run **`npm install`** then **`npm run dev`** (default **http://localhost:3000**). The dev server proxies `/api` to port **5001** — keep the backend running.
+4. In the browser: fill the budget form → **Analyze** → quiz → grade → explanation/tip. Optionally use **What-if** after the first result to tweak one category and re-run Analyze (same API as the form).
+
+**Sanity checks:** `cd frontend && npm run build` should succeed; `cd backend && python test_tutor.py` should print `OK` after setup.
+
+**If you see `python-dotenv could not parse line 1`:** open `backend/.env` and ensure line 1 is either a comment (`# ...`) or `KEY=value` with no hidden/BOM characters (re-save as UTF-8 without BOM if needed).
+
+## Milestone 2 User Flow
+
+1. Enter monthly income, expenses, and a goal.
+2. Click **Analyze**.
+3. Review the generated quiz question.
+4. Submit a short answer for grading.
+5. Review the grader verdict and answer key.
+6. Continue to the grounded explanation and financial tip.
+
+This flow is implemented through:
+- `POST /api/analyze`
+- `POST /api/grade-quiz`
 
 ### Prerequisites
 - Python 3.10+ (backend)
@@ -88,12 +114,7 @@ source venv/bin/activate
 python demo.py
 ```
 
-This interactive demo will:
-1. Collect your budget information
-2. Analyze it using AI
-3. Quiz you with 2 to 3 questions
-4. Give you personalized tips
-5. Let you ask the AI any questions
+This demo prompts for a budget and prints the same fields as the API (advice, quiz, tip). Optional: `DEMO_JSON=1` for full JSON.
 
 ### Run the backend API
 ```bash
@@ -127,6 +148,7 @@ Open **http://localhost:3000**. The dev server proxies `/api` to the backend (se
 - [Financial Rules](docs/financial_rules.md)
 - [Milestone 2 demo guide](docs/milestone2_demo.md)
 - [Milestone 2 team handoff (three tasks)](docs/team_tasks_milestone2.md)
+- [AI vs deterministic fallback (Sprint 2)](docs/fallback_quality_assessment.md)
 
 ## Milestone 1 Deliverables
 

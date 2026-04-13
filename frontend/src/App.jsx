@@ -2,22 +2,27 @@ import { useState } from 'react'
 import Header from './components/Header'
 import BudgetForm from './components/BudgetForm'
 import BudgetResults from './components/BudgetResults'
+import { normalizeBudgetPayload } from './utils/budgetPayload'
 
 function App() {
   const [analysisResult, setAnalysisResult] = useState(null)
   const [monthlyIncome, setMonthlyIncome] = useState(0)
+  const [lastBudgetPayload, setLastBudgetPayload] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
 
   const handleBudgetSubmit = async (budgetData) => {
     setIsLoading(true)
     setError(null)
-    setMonthlyIncome(budgetData.monthly_income || 0)
+    const normalized = normalizeBudgetPayload(budgetData)
+    setLastBudgetPayload(normalized)
+    setMonthlyIncome(normalized.monthly_income || 0)
+
     try {
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(budgetData),
+        body: JSON.stringify(normalized),
       })
 
       if (!response.ok) {
@@ -36,58 +41,70 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-slate-950 text-white">
       <Header />
 
-      <main className="flex-1 container mx-auto px-4 py-8 max-w-2xl w-full">
-        <header className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-semibold text-white mb-2">
+      <main className="mx-auto w-full max-w-3xl px-4 py-8 md:px-6 md:py-12">
+        <header className="mb-8 md:mb-10">
+          <div className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200 mb-4">
+            Milestone 2 MVP
+          </div>
+
+          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-3">
             Budget check-in
           </h1>
-          <p className="text-slate-300 text-sm md:text-base leading-relaxed">
-            Enter your monthly income and expenses, then click <strong>Analyze</strong>. You will
-            see a short explanation tied to your numbers, one quiz question, and one tip linked to
-            our documented rules.
+
+          <p className="max-w-2xl text-sm md:text-base leading-7 text-slate-300">
+            Enter your monthly income and expenses to generate a quiz-first budget analysis flow.
+            After you submit your answer, the app will show the grader verdict, answer key,
+            grounded explanation, and a financial tip.
           </p>
         </header>
 
         <section className="mb-6" id="budget">
-          <BudgetForm onSubmit={handleBudgetSubmit} isLoading={isLoading} />
+          <BudgetForm
+            onSubmit={handleBudgetSubmit}
+            isLoading={isLoading}
+            syncedBudget={lastBudgetPayload}
+          />
         </section>
 
         {isLoading && (
-          <p
-            className="mb-4 text-sm text-emerald-200/90 flex items-center gap-2"
+          <div
+            className="mb-6 flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100"
             role="status"
             aria-live="polite"
           >
             <span
-              className="inline-block h-4 w-4 border-2 border-emerald-300 border-t-transparent rounded-full animate-spin"
-              aria-hidden
+              className="inline-block h-4 w-4 rounded-full border-2 border-emerald-300 border-t-transparent animate-spin"
+              aria-hidden="true"
             />
-            Analyzing your budget…
-          </p>
+            Analyzing your budget...
+          </div>
         )}
 
         {error && (
           <div
-            className="mb-6 p-4 rounded-lg bg-red-950/40 border border-red-800/60 text-red-100 text-sm"
+            className="mb-6 rounded-lg border border-red-800/60 bg-red-950/40 px-4 py-3 text-sm text-red-100"
             role="alert"
           >
             <strong className="text-red-200">Could not complete analysis:</strong> {error}
           </div>
         )}
 
-        {analysisResult && !isLoading && (
-          <section className="mb-10">
+        {analysisResult && (
+          <section className="mb-10 w-full min-w-0">
             <BudgetResults
               results={analysisResult}
               monthlyIncome={monthlyIncome}
+              budgetPayload={lastBudgetPayload}
+              onReanalyze={handleBudgetSubmit}
+              isReanalyzing={isLoading}
             />
           </section>
         )}
 
-        <footer className="text-center text-xs text-slate-400 mt-auto pt-8 pb-6">
+        <footer className="pt-8 pb-4 text-center text-xs text-slate-400">
           Educational use only — not financial advice.
         </footer>
       </main>
